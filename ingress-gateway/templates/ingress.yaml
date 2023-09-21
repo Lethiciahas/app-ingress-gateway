@@ -23,39 +23,23 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
-  ingressClassName: {{ .Values.ingress.className }}
-  {{- end }}
-  {{- if .Values.ingress.tls }}
-  tls:
-    {{- range .Values.ingress.tls }}
-    - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ .secretName }}
-    {{- end }}
-  {{- end }}
+  {{- with .Values.ingress.hosts }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+    {{- range $host := . }} #inicio loop inteirar sobre a lista de host
+    - host: {{ $host.host }} #define o host/domínio atual no loop.
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
-            pathType: {{ .pathType }}
-            {{- end }}
+          {{- range $path := $host.paths }} #inicia o loop para inteirar sobre a lista de paths associados ao host especificado
+          - path: {{ $path }} #recebe o o caminho atual no loop
+          {{- with $pathType := "Prefix" }} #prefix por default
+            pathType: {{ $pathType }}
+          {{- end }}
             backend:
-              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ .backend.serviceName }}
+                name: {{ $fullName }}
                 port:
-                  number: {{ .backend.servicePort }}
-              {{- else }}
-              serviceName: {{ $fullName }}
-              servicePort: 80
-              {{- end }}
+                  number: {{ $svcPort }}
           {{- end }}
     {{- end }}
+  {{- end }}
 {{- end }}
