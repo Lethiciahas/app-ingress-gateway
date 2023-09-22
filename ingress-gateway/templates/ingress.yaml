@@ -1,5 +1,4 @@
 {{- if .Values.ingress.enabled -}}
-{{- $fullName := include "ingress-gateway.fullname" . -}}
 {{- $svcPort := .Values.service.port -}}
 {{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
@@ -15,7 +14,7 @@ apiVersion: extensions/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
+  name: {{- include "ingress-gateway.fullname" }}
   labels:
     {{- include "ingress-gateway.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -23,23 +22,24 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- with .Values.ingress.hosts }}
+  {{- with .Values.ingress.Service }}
   rules:
-    {{- range $host := . }} #inicio loop inteirar sobre a lista de host
-    - host: {{ $host.host }} #define o host/domínio atual no loop.
+    {{- range $service := . }} #inteirar sore a lista de serviços
+    {{- range $route := $service.routes }} #inteiras sobre rotas associadas ao serviço
+    {{- range $host := $route.hosts }} #inteirar sobre os hosts associados a esta rota
+    - host: {{ $host.host }} #recbe o dominio associado
       http:
         paths:
-          {{- range $path := $host.paths }} #inicia o loop para inteirar sobre a lista de paths associados ao host especificado
-          - path: {{ $path }} #recebe o o caminho atual no loop
-          {{- with $pathType := "Prefix" }} #prefix por default
-            pathType: {{ $pathType }}
-          {{- end }}
+        {{- range $path := $route.paths }} #inteirar sobre os caminhos associados a esta rota
+         - path: {{ $path.path }} #recebe o path correspondente a esta regra
             backend:
               service:
-                name: {{ $fullName }}
+                name: {{ $service.serviceName }}
                 port:
                   number: {{ $svcPort }}
-          {{- end }}
+        {{- end }}
+    {{- end }}
+    {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}

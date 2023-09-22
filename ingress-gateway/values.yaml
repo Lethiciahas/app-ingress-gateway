@@ -44,13 +44,25 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
-  hosts:
-    - host: dominio1.com
-      paths:
+  Service:
+   - serviceName: service-1
+     routes:
+      - host: example-dominio-a.com
+        paths:
         - path: /
         - path: /
-    - host: dominio2.com
-      paths:
+      - host: example-dominio-b.com
+        paths:
+        - path: /
+        - path: /
+   - serviceName: service2
+     routes:
+      - host: example-dominio-c.com
+        paths:
+        - path: /
+        - path: /
+      - host: dexample-dominio-d.com
+        paths:
         - path: /
         - path: /
   tls: []
