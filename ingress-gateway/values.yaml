@@ -41,9 +41,10 @@ service:
   port: 80
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
   Service:
    - serviceName: service-1
      routes:
@@ -61,7 +62,7 @@ ingress:
         paths:
         - path: /
         - path: /
-      - host: dexample-dominio-d.com
+      - host: example-dominio-d.com
         paths:
         - path: /
         - path: /

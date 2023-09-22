@@ -1,20 +1,9 @@
 {{- if .Values.ingress.enabled -}}
-{{- $svcPort := .Values.service.port -}}
-{{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
-  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
-  {{- end }}
-{{- end }}
-{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
+{{- $fullName := include "ingress-gateway.fullname" . -}}
 apiVersion: networking.k8s.io/v1
-{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-apiVersion: networking.k8s.io/v1beta1
-{{- else -}}
-apiVersion: extensions/v1beta1
-{{- end }}
 kind: Ingress
 metadata:
-  name: {{- include "ingress-gateway.fullname" }}
+  name: {{ $fullName }}
   labels:
     {{- include "ingress-gateway.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -22,23 +11,34 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- with .Values.ingress.Service }}
+{{- if .Values.ingress.className }}
+  {{- if semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+{{- end }}
   rules:
-    {{- range $service := . }} #inteirar sore a lista de serviços
-    {{- range $route := $service.routes }} #inteiras sobre rotas associadas ao serviço
-    {{- range $host := $route.hosts }} #inteirar sobre os hosts associados a esta rota
-    - host: {{ $host.host }} #recbe o dominio associado
+  {{- range .Values.ingress.Service }} # Itera sobre as configurações de serviços no arquivo values.yaml
+    {{- range .routes }} # Itera sobre as rotas definidas para o serviço
+    {{- range .hosts }} # Itera sobre os hosts associados a cada rota
+    - host: {{ .host }} # Define o host para o qual esta regra se aplica
       http:
         paths:
-        {{- range $path := $route.paths }} #inteirar sobre os caminhos associados a esta rota
-         - path: {{ $path.path }} #recebe o path correspondente a esta regra
+        {{- range .paths }} # Itera sobre as paths dentro deste host
+          - path: {{ .path }} # Define o o path para esta regra
+            {{- if .pathType }}
+            pathType: {{ .pathType }}
+            {{- end }}
             backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ $service.serviceName }}
+                name: {{ .serviceName }}
                 port:
-                  number: {{ $svcPort }}
+                  number: 80
+              {{- else }}
+              serviceName: {{ .serviceName }} #realese/namespace?
+              servicePort: 80 #declação
+              {{- end }}
         {{- end }}
-    {{- end }}
     {{- end }}
     {{- end }}
   {{- end }}
